@@ -1,17 +1,34 @@
+const capitalize = (str) =>
+  String(str).charAt(0).toUpperCase() + String(str).substring(1);
+
 function Store() {
   const subscribers = new Set();
+  const watchers = new Set();
+
+  function notifyAll(states) {
+    subscribers.forEach((callBack) => callBack && callBack(states));
+  }
+
+  function watcher(value, oldValue) {
+    watchers.forEach(
+      (watchCallBack) => watchCallBack && watchCallBack(value, oldValue)
+    );
+  }
 
   return {
     handler: {
       get(target, prop, receiver) {
         if (!Reflect.has(target, prop)) return null;
-
-        if (!subscribers.has(prop)) subscribers.add(prop);
-
         return Reflect.get(...arguments);
       },
       set(target, prop, value) {
+        const oldValue = Reflect.get(target, prop);
         const result = Reflect.set(target, prop, value);
+        const currentValue = Reflect.get(target, prop);
+
+        notifyAll(target);
+        watcher(currentValue, oldValue);
+
         return result;
       },
     },
@@ -27,14 +44,32 @@ function Store() {
 
       return Object.freeze(source);
     },
+    watch(_watchers = {}) {
+      const _watcher = {};
+
+      Object.keys(_watchers).forEach((key) => {
+        const value = Reflect.get(_watchers, key);
+        watchers.add(value);
+
+        _watcher[`stop${capitalize(key)}`] = () => watchers.delete(value);
+      });
+
+      return _watcher;
+    },
+    render(states, callBack) {
+      subscribers.add(callBack);
+      callBack && callBack(states);
+
+      return () => subscribers.delete(callBack);
+    },
   };
 }
 
 /**
  * @template {Object.<string, unknown>} T
  * @param {string} name
- * @param {{ state: T, getters: Object.<string,(states: T) => unknown> }} options
- * @returns {{ state: T, getters: Object.<string, unknown> }}
+ * @param {{ state: T, getters: Object.<string,(states: T) => unknown>, watch: Object.<string, unknown> }} options
+ * @returns {{ state: T, getters: Object.<string, unknown>, watch: Object.<keyof T, () => void>, render: (states: readonly<T>) => void }}
  */
 export function defineStore(name, options) {
   const _store = Store(name);
@@ -43,5 +78,7 @@ export function defineStore(name, options) {
   return {
     state: states,
     getters: _store.getters(states, options.getters),
+    watch: _store.watch(options.watch),
+    render: (cb) => _store.render(states, cb),
   };
 }
