@@ -43,6 +43,9 @@ describe("state", () => {
         multiply({ counter }) {
           return (value) => counter * value;
         },
+        isTeenValue({ counter }) {
+          return counter === 10;
+        },
       },
     });
 
@@ -50,6 +53,7 @@ describe("state", () => {
 
     expect(store.getters.multiply(3)).toBe(30);
     expect(store.getters.double).toBe(20);
+    expect(store.getters.isTeenValue).toBe(true);
   });
 
   it("should re-render after state update", () => {
@@ -100,16 +104,18 @@ describe("state", () => {
     const store = defineStore("counter", {
       state: {
         counter: 0,
-        anti_pattern: false,
+        isBoolean: false,
       },
       watch: {
         counter(value, oldValue) {
           calledCount++;
         },
+        isBoolean(value, oldValue) {},
       },
     });
 
     store.state.counter++;
+    store.state.isBoolean = true;
 
     store.watch.stopCounter();
 

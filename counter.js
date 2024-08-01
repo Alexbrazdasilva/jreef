@@ -8,23 +8,22 @@ const store = defineStore("counter", {
     double({ value }) {
       return value * 2;
     },
-    sumValue({ value }) {
-      return (current) => current + this.double({ value });
+    currentColorItem({ value }) {
+      return value > 2 ? "orange" : "white";
     },
+  },
+  watch: {
+    value(value, oldValue) {},
   },
 });
 
 export function setupCounter(element) {
-  store.state.value = 0;
-  const setCounter = () => {
+  store.render(() => {
+    element.style.color = store.getters.currentColorItem;
+    element.innerHTML = `Total de items | ${store.state.value}`;
+  });
+
+  element.addEventListener("click", () => {
     store.state.value++;
-
-    const finalValue = store.getters.sumValue(store.state.value);
-    element.innerHTML = `
-    count is ${store.state.value} | ${store.getters.double} | ${finalValue}
-    `;
-  };
-
-  element.addEventListener("click", () => setCounter());
-  setCounter(0);
+  });
 }

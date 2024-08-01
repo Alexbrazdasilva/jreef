@@ -1,18 +1,16 @@
-const capitalize = (str) =>
-  String(str).charAt(0).toUpperCase() + String(str).substring(1);
+import { capitalize } from "@/utils/string";
 
 function Store() {
   const subscribers = new Set();
-  const watchers = new Set();
+  const watchers = new Map();
 
   function notifyAll(states) {
     subscribers.forEach((callBack) => callBack && callBack(states));
   }
 
-  function watcher(value, oldValue) {
-    watchers.forEach(
-      (watchCallBack) => watchCallBack && watchCallBack(value, oldValue)
-    );
+  function watcher(value, oldValue, key) {
+    const valueFn = watchers.get(key);
+    valueFn && valueFn(value, oldValue);
   }
 
   return {
@@ -27,7 +25,7 @@ function Store() {
         const currentValue = Reflect.get(target, prop);
 
         notifyAll(target);
-        watcher(currentValue, oldValue);
+        watcher(currentValue, oldValue, prop);
 
         return result;
       },
@@ -44,14 +42,20 @@ function Store() {
 
       return Object.freeze(source);
     },
-    watch(_watchers = {}) {
+    watch(states, _watchers = {}) {
       const _watcher = {};
 
       Object.keys(_watchers).forEach((key) => {
-        const value = Reflect.get(_watchers, key);
-        watchers.add(value);
+        watchers.set(key, Reflect.get(_watchers, key));
 
-        _watcher[`stop${capitalize(key)}`] = () => watchers.delete(value);
+        const stopKeyWatcher = `stop${capitalize(key)}`;
+
+        Reflect.defineProperty(_watcher, stopKeyWatcher, {
+          value: (lastCallBack) => {
+            lastCallBack && lastCallBack(Reflect.get(states, key));
+            watchers.delete(key);
+          },
+        });
       });
 
       return _watcher;
@@ -78,7 +82,7 @@ export function defineStore(name, options) {
   return {
     state: states,
     getters: _store.getters(states, options.getters),
-    watch: _store.watch(options.watch),
+    watch: _store.watch(states, options.watch),
     render: (cb) => _store.render(states, cb),
   };
 }
