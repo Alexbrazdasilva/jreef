@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "moduleResolution": "Node",
+    "noEmit": true,
+    "strict": true,
+    "allowJs": true
+  }
+}

@@ -25,9 +25,9 @@ describe("state", () => {
       },
     });
 
-    expect(store.getters.double).toBe(0);
-    expect(store.getters.firstMemberOfList).toBe(1);
-    expect(store.getters.formattedPerson).contains("Jhon Doe");
+    expect(store.getters.double.value).toBe(0);
+    expect(store.getters.firstMemberOfList.value).toBe(1);
+    expect(store.getters.formattedPerson.value).contains("Jhon Doe");
     expect(store.state.counter).toBe(0);
   });
 
@@ -51,9 +51,9 @@ describe("state", () => {
 
     store.state.counter = 10;
 
-    expect(store.getters.multiply(3)).toBe(30);
-    expect(store.getters.double).toBe(20);
-    expect(store.getters.isTeenValue).toBe(true);
+    expect(store.getters.multiply.value(3)).toBe(30);
+    expect(store.getters.double.value).toBe(20);
+    expect(store.getters.isTeenValue.value).toBe(true);
   });
 
   it("should re-render after state update", () => {
@@ -110,7 +110,6 @@ describe("state", () => {
         counter(value, oldValue) {
           calledCount++;
         },
-        isBoolean(value, oldValue) {},
       },
     });
 
@@ -123,5 +122,69 @@ describe("state", () => {
     store.state.counter++;
 
     expect(calledCount).toBe(1);
+  });
+
+  it.skip("should call watch function after first render", () => {
+    const store = defineStore("counter", {
+      state: {
+        counter: 0,
+        isBoolean: false,
+      },
+      watch: {
+        counter: {
+          handler(value, oldValue) {
+            console.log(`🚀 ~ handler ~ value, oldValue:`, value, oldValue);
+          },
+          lazy: true,
+        },
+      },
+    });
+
+    store.state.counter++;
+    store.watch.stopCounter();
+  });
+
+  it("should re-render after deep state changes", () => {
+    let renderCount = 0;
+    const store = defineStore("list", {
+      state: {
+        items: [],
+        person: {
+          name: "",
+          tags: [],
+        },
+      },
+      watch: {
+        items() {
+          renderCount++;
+        },
+        person(value, oldValue) {
+          renderCount++;
+        },
+      },
+    });
+
+    store.state.items.push("foo");
+    store.state.items.push("baz");
+    store.state.person.name = "Jhon Doe";
+
+    expect(renderCount).toBe(3);
+  });
+
+  it("should re-render after call hydrate method", () => {
+    let renderCount = 0;
+    const { state, hydrate, render } = defineStore("list", {
+      state: {
+        counter: 0,
+      },
+    });
+
+    render(() => renderCount++);
+
+    state.counter++;
+
+    hydrate();
+
+    expect(renderCount).toBe(3);
   });
 });
