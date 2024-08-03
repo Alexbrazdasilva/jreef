@@ -46,6 +46,9 @@ describe("state", () => {
         isTeenValue({ counter }) {
           return counter === 10;
         },
+        foo({ counter }) {
+          return counter.toFixed(2);
+        },
       },
     });
 
@@ -124,7 +127,9 @@ describe("state", () => {
     expect(calledCount).toBe(1);
   });
 
-  it.skip("should call watch function after first render", () => {
+  it("should call the watch function after the second state change", () => {
+    const mocked = vi.fn();
+
     const store = defineStore("counter", {
       state: {
         counter: 0,
@@ -133,7 +138,7 @@ describe("state", () => {
       watch: {
         counter: {
           handler(value, oldValue) {
-            console.log(`🚀 ~ handler ~ value, oldValue:`, value, oldValue);
+            mocked({ value, oldValue });
           },
           lazy: true,
         },
@@ -141,11 +146,13 @@ describe("state", () => {
     });
 
     store.state.counter++;
-    store.watch.stopCounter();
+    store.state.counter++;
+
+    expect(mocked).toHaveBeenCalled();
   });
 
   it("should re-render after deep state changes", () => {
-    let renderCount = 0;
+    const mocked = vi.fn();
     const store = defineStore("list", {
       state: {
         items: [],
@@ -156,10 +163,11 @@ describe("state", () => {
       },
       watch: {
         items() {
-          renderCount++;
+          mocked();
         },
-        person(value, oldValue) {
-          renderCount++;
+        person: {
+          handler: mocked,
+          lazy: true,
         },
       },
     });
@@ -168,23 +176,24 @@ describe("state", () => {
     store.state.items.push("baz");
     store.state.person.name = "Jhon Doe";
 
-    expect(renderCount).toBe(3);
+    expect(mocked).toBeCalledTimes(2);
   });
 
   it("should re-render after call hydrate method", () => {
-    let renderCount = 0;
+    const mock = vi.fn();
+
     const { state, hydrate, render } = defineStore("list", {
       state: {
         counter: 0,
       },
     });
 
-    render(() => renderCount++);
+    render(mock);
 
     state.counter++;
 
     hydrate();
 
-    expect(renderCount).toBe(3);
+    expect(mock).toHaveBeenCalledTimes(3);
   });
 });

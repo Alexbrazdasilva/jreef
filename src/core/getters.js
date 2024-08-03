@@ -10,6 +10,7 @@ export function defineGetters(states, getters = {}) {
         Reflect.defineProperty(res, "value", {
           value: getterFn(states),
           writable: false,
+          configurable: false,
         });
 
         return res;

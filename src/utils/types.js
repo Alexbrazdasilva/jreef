@@ -18,4 +18,6 @@ export const types = {
   is: (value, duckType) => Object.is(duckTypeExtract(value), duckType),
   isObj: (value) => types.is(value, "object"),
   isArr: (value) => types.is(value, "array"),
+  isUndef: (value) => value === undefined,
+  isNull: (value) => value === null,
 };

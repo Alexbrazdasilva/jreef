@@ -1,15 +1,10 @@
-import { STATE } from "@/core/constants";
 import { defineGetters } from "@/core/getters";
+import { defineRenders } from "@/core/renders";
 import { defineNotifier } from "@/core/subscribers";
 import { defineWatcher } from "@/core/watcher";
-import { types } from "@/utils/types";
 
-const WATCH_KEYS = {
-  KEY: "key",
-  WATCHER_NAME: "watcherName",
-  DEEP: "deep",
-  HANDLER: "handler",
-};
+import { STATE, WATCH } from "@/core/constants";
+import { types } from "@/utils/types";
 
 function Store() {
   const SUBSCRIBERS = new Set();
@@ -18,7 +13,7 @@ function Store() {
   const deepKeys = new Map();
 
   const { notify } = defineNotifier(SUBSCRIBERS);
-
+  const { render } = defineRenders(SUBSCRIBERS);
   const { watch } = defineWatcher(WATCHERS);
 
   const handler = {
@@ -37,37 +32,36 @@ function Store() {
 
       return Reflect.get(...arguments);
     },
-    set(target, prop, value) {
-      const oldValue = Reflect.get(target, prop);
-      const result = Reflect.set(target, prop, value);
-      const currentValue = Reflect.get(target, prop);
+    set(target, name, value) {
+      const oldValue = Reflect.get(target, name);
+      const result = Reflect.set(target, name, value);
+      const currentValue = Reflect.get(target, name);
 
       notify(target);
 
       const payload = {
         value: currentValue,
         oldValue,
-        watcherName: prop,
+        name,
         target,
       };
 
       if (types.isArr(target) || types.isObj(target)) {
-        if (prop === "length") return result;
+        if (name === "length") return result;
 
-        Reflect.set(payload, WATCH_KEYS.DEEP, handler[STATE.LEVEL]);
-
-        Reflect.set(payload, WATCH_KEYS.WATCHER_NAME, handler[STATE.KEY]);
+        Reflect.set(payload, WATCH.DEEP, handler[STATE.LEVEL]);
+        Reflect.set(payload, WATCH.WATCHER_NAME, handler[STATE.KEY]);
 
         if (!handler[STATE.KEY]) {
-          const nestedKeyState = [handler[STATE.KEY], prop]
+          const nestedKeyState = [handler[STATE.KEY], name]
             .filter(Boolean)
             .join(".");
 
           const isDeepState = handler[STATE.LEVEL] > 1;
 
-          const watcherName = isDeepState ? nestedKeyState : prop;
+          const watcherName = isDeepState ? nestedKeyState : name;
 
-          Reflect.set(payload, WATCH_KEYS.WATCHER_NAME, watcherName);
+          Reflect.set(payload, WATCH.WATCHER_NAME, watcherName);
         }
       }
 
@@ -100,30 +94,27 @@ function Store() {
             lastCallBack && lastCallBack(Reflect.get(states, key));
             WATCHERS.delete(key);
           },
+          writable: false,
+          configurable: false,
         });
       });
 
       return _watcher;
     },
-    render(states, callBack) {
-      SUBSCRIBERS.add(callBack);
-      callBack && callBack(states);
-
-      return () => SUBSCRIBERS.delete(callBack);
-    },
     hydrate: notify,
+    render,
   };
 }
 
 export function defineStore(name, options) {
   const _store = Store(name);
-  const states = new Proxy(options.state, _store.handler);
+  const state = new Proxy(options.state, _store.handler);
 
   return {
-    state: states,
-    getters: _store.getters(states, options.getters),
-    watch: _store.watch(states, options.watch),
-    render: (cb) => _store.render(states, cb),
-    hydrate: () => _store.hydrate(states),
+    state,
+    getters: _store.getters(state, options.getters),
+    watch: _store.watch(state, options.watch),
+    render: (cb) => _store.render(state, cb),
+    hydrate: () => _store.hydrate(state),
   };
 }

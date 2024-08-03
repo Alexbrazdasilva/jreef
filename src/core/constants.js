@@ -8,3 +8,10 @@ export const STATE = Object.freeze({
   LAZY: "lazy",
   WATCHER_STOP: (key) => `stop${capitalize(key)}`,
 });
+
+export const WATCH = Object.freeze({
+  KEY: "key",
+  WATCHER_NAME: "name",
+  DEEP: "deep",
+  HANDLER: "handler",
+});
